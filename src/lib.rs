@@ -32,19 +32,11 @@ impl Vec3 {
     }
 
     pub fn sub(&self, f: f64) -> Vec3 {
-        Vec3 {
-            x: self.x- f,
-            y: self.y - f,
-            z: self.z - f,
-        }
+        self.add(f * -1.0)
     }
 
     pub fn div(&self, f: f64) -> Vec3 {
-        Vec3 {
-            x: self.x / f,
-            y: self.y / f,
-            z: self.z / f,
-        }
+        self.mul(1.0/f)
     }
 
     pub fn mul(&self, f: f64) -> Vec3 {
@@ -53,6 +45,22 @@ impl Vec3 {
             y: self.y * f,
             z: self.z * f,
         }
+    }
+
+    pub fn cross(&self, o: &Vec3) -> Vec3 {
+        Vec3 {
+            x: self.y * o.z - self.z * o.y,
+            y: self.z * o.x - self.x * o.z,
+            z: self.x * o.y - self.y * o.x,
+        }
+    }
+
+    pub fn dot(&self, o: &Vec3) -> f64 {
+        self.x * o.x + self.y * o.y + self.z * o.z
+    }
+
+    pub fn unit_vector(&self) -> Vec3 {
+        self.div(self.length())
     }
 }
 
