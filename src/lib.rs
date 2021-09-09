@@ -6,6 +6,11 @@ pub struct Vec3 {
     pub z: f64,
 }
 
+pub struct Ray {
+    pub origin: Vec3,
+    pub direction: Vec3,
+}
+
 impl Vec3 {
     pub fn new(x: f64, y: f64, z: f64) -> Vec3 {
         Vec3 {
@@ -64,7 +69,6 @@ impl Vec3 {
     }
 }
 
-// Add a vector
 impl Add for Vec3 {
     type Output = Self;
 
@@ -77,7 +81,6 @@ impl Add for Vec3 {
     }
 }
 
-// Subtract a float to all values
 impl Sub for Vec3 {
     type Output = Self;
 
@@ -90,9 +93,41 @@ impl Sub for Vec3 {
     }
 }
 
-// Multiply by a float
+impl Ray {
+    pub fn new(origin: Vec3, direction: Vec3) -> Ray {
+        Ray {
+            origin,
+            direction,
+        }
+    }
 
-// Divide by a float
+    pub fn at(&self, mag: f64) -> Vec3 {
+        self.origin.clone() + self.direction.mul(mag)
+    }
+}
 
+impl Default for Vec3 {
+    // Returns a zero vector.
+    fn default() -> Vec3 {
+        Vec3::new(0.0, 0.0, 0.0)
+    }
+}
 
+impl Clone for Vec3 {
+    fn clone(&self) -> Vec3 {
+        Vec3 {
+            x: self.x,
+            y: self.y,
+            z: self.z
+        }
+    }
+}
 
+impl Default for Ray {
+    fn default() -> Ray {
+        Ray {
+            origin: Default::default(),
+            direction: Default::default(),
+        }
+    }
+}

@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::prelude::*;
-use rust_tracer::Vec3;
+use rust_tracer::{Vec3, Ray};
+use num::Float;
 
 fn main() {
     println!("Hello, world!");
@@ -9,24 +10,47 @@ fn main() {
 
 fn write_pixels() {
 
-    let img_height: f64 = 256.0;
-    let img_width: f64 = 256.0;
+    // Image
+    let aspect_ratio = 16.0 / 9.0;
+    let img_width: f64 = 600.0;
+    let img_height: f64 = img_width / aspect_ratio;
+
+    // Camera
+    let viewport_height = 2.0;
+    let viewport_width = aspect_ratio * viewport_height;
+    let focal_length = 1.0; // <- MAGIC NUMBER ALERT.
+
+    let origin: Vec3 = Default::default(); // A zero vector.
+    let horizontal = Vec3 { x: viewport_width, y: 0.0, z: 0.0, };
+    let vertical = Vec3 { x: 0.0, y: viewport_height, z: 0.0, };
+    let lower_left_corner = origin.clone() - horizontal.div(2.0) - vertical.div(2.0) - Vec3 {x: 0.0, y: 0.0, z: focal_length, };
+
+    // Render
 
     let mut image_string = String::new();
 
-    image_string.push_str(format!("P3\n{} {}\n255\n", img_height, img_width).as_str());
+    image_string.push_str(format!("P3\n{} {}\n255\n", img_width, img_height).as_str());
 
     for i in (0..=((img_height.round() as i64)-1)).rev() {
         print!("\rScanlines remaining: {}", i);
         for j in 0..=((img_width.round() as i64)-1) {
 
+            let u = j as f64 / (img_width - 1.0); // Scan across left to right of the viewport
+            let v = i as f64 / (img_height - 1.0); // Scan from bottom to top of the viewport
+
+            let ray = Ray {
+                origin: origin.clone(),
+                direction: lower_left_corner.clone() + horizontal.mul(u) + vertical.mul(v) - origin.clone()
+            };
+
             let colour = Vec3 {
-                x: i as f64 / (img_width - 1.0),
-                y: j as f64 / (img_height - 1.0),
+                x: i as f64 / (img_height - 1.0),
+                y: j as f64 / (img_width - 1.0),
                 z: 0.5,
             };
 
-            image_string.push_str(write_colour(colour).as_str())
+            image_string.push_str(write_colour(ray_to_colour(&ray)).as_str());
+            // image_string.push_str(write_colour(colour).as_str())
         }
     }
     print!("\n");
@@ -41,7 +65,7 @@ fn write_pixels() {
 }
 
 fn write_colour(col: Vec3) -> String {
-    format!("{} {} {}\n", col.x * 255.0, col.y * 255.0, col.z * 255.0)
+    format!("{} {} {}\n", (col.x * 255.0) as f32, (col.y * 255.0) as f32, (col.z * 255.0) as f32)
 }
 
 fn write_file(str: &str, file: &mut File) {
@@ -49,4 +73,32 @@ fn write_file(str: &str, file: &mut File) {
         Err(e) => panic!("Couldn't write to image: {}", e),
         Ok(_) => println!("Image successfully written!"),
     }
+}
+
+fn ray_to_colour(ray: &Ray) -> Vec3 {
+
+    if hit_sphere(&Vec3 {x: 0.0, y: 0.0, z: -1.0, }, 0.5, &ray) {
+        return Vec3{x: 1.0, y: 0.0, z: 0.0}
+    }
+
+    let unit_direction = ray.direction.unit_vector(); // Get the unit vector of the ray
+    // <- MAGIC NUMBER ALERT
+    let mag = 0.5 * (unit_direction.y + 1.0); // The 1.0 is the focal length here. As we go upwards, the colour decreases.
+    let colour_vec = Vec3 {x: 1.0, y: 1.0, z: 1.0};
+    let grad_vec = Vec3 { x: 0.5, y: 0.7, z: 1.0 };
+    colour_vec.mul((1.0 - mag)) + grad_vec.mul(mag) // Compute the magic gradient colour.
+}
+
+fn lerp_float(begin: f64, end: f64, t: f64) -> f64 {
+    ((1.0 - t) * begin) + (t * end)
+}
+
+// Calculates the discriminant
+fn hit_sphere(centre: &Vec3, radius: f64, ray: &Ray) -> bool {
+    let oc = ray.origin.clone() - centre.clone();
+    let a = ray.direction.dot(&ray.direction);
+    let b = oc.dot(&ray.direction) * 2.0; // The 2 comes from the discriminant equation
+    let c = oc.dot(&oc) - radius * radius;
+    let discriminant = b*b - 4.0 * a * c;
+    discriminant > 0.0
 }
