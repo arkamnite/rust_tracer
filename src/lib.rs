@@ -131,3 +131,16 @@ impl Default for Ray {
         }
     }
 }
+
+pub fn unit_vector(t: f64) -> Vec3 {
+    Vec3 {
+        x: t,
+        y: t,
+        z: t,
+    }
+}
+
+pub fn find_unit_vector(v: &Vec3) -> Vec3 {
+    let mag = v.length();
+    v.div(mag)
+}

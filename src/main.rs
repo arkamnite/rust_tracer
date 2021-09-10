@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::prelude::*;
-use rust_tracer::{Vec3, Ray};
+use rust_tracer::*;
 use num::Float;
 
 fn main() {
@@ -77,8 +77,12 @@ fn write_file(str: &str, file: &mut File) {
 
 fn ray_to_colour(ray: &Ray) -> Vec3 {
 
-    if hit_sphere(&Vec3 {x: 0.0, y: 0.0, z: -1.0, }, 0.5, &ray) {
-        return Vec3{x: 1.0, y: 0.0, z: 0.0}
+    let t =  hit_sphere(&Vec3 {x: 0.0, y: 0.0, z: -1.0, }, 0.5, &ray); //  we created the centre
+
+    // Only colour normals that are in front of the camera
+    if t > 0.0 {
+        let N = find_unit_vector(&(ray.at(t) - Vec3 { x: 0.0, y: 0.0, z: -1.0 }));
+        return Vec3{x: N.x + 1.0, y: N.y + 1.0, z: N.z + 1.0}.mul(0.5)
     }
 
     let unit_direction = ray.direction.unit_vector(); // Get the unit vector of the ray
@@ -94,11 +98,16 @@ fn lerp_float(begin: f64, end: f64, t: f64) -> f64 {
 }
 
 // Calculates the discriminant
-fn hit_sphere(centre: &Vec3, radius: f64, ray: &Ray) -> bool {
+fn hit_sphere(centre: &Vec3, radius: f64, ray: &Ray) -> f64 {
     let oc = ray.origin.clone() - centre.clone();
-    let a = ray.direction.dot(&ray.direction);
-    let b = oc.dot(&ray.direction) * 2.0; // The 2 comes from the discriminant equation
-    let c = oc.dot(&oc) - radius * radius;
-    let discriminant = b*b - 4.0 * a * c;
-    discriminant > 0.0
+    let a = ray.direction.length_sq();
+    let half_b = oc.dot(&ray.direction); // we removed the '2' as we can consider the case b = 2h
+    let c = oc.length_sq() - (radius * radius);
+    let discriminant = half_b * half_b - a * c;
+
+    if discriminant < 0.0 {
+        -1.0
+    } else {
+        (-half_b - discriminant.sqrt()) / a
+    }
 }
