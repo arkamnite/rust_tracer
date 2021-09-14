@@ -11,6 +11,26 @@ pub struct Ray {
     pub direction: Vec3,
 }
 
+pub struct HitRecord {
+    pub point: Vec3,
+    pub normal: Vec3,
+    pub t: f64,
+    pub front_face: bool,
+}
+
+pub struct Sphere {
+    pub centre: Vec3,
+    pub radius: f64,
+}
+
+pub struct HittableList {
+    pub object_list: Vec<Box<dyn Hittable>>, // Using a Box as we don't want to be copying around many objects.
+}
+
+trait Hittable {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool;
+}
+
 impl Vec3 {
     pub fn new(x: f64, y: f64, z: f64) -> Vec3 {
         Vec3 {
@@ -103,6 +123,100 @@ impl Ray {
 
     pub fn at(&self, mag: f64) -> Vec3 {
         self.origin.clone() + self.direction.mul(mag)
+    }
+}
+
+impl Sphere {
+    pub fn new(centre: Vec3, radius: f64) -> Sphere {
+        Sphere {
+            centre,
+            radius
+        }
+    }
+}
+
+impl HitRecord {
+    pub fn set_face_normal(&mut self, ray: &Ray, outward_normal: &Vec3) {
+        let front_face = ray.direction.dot(outward_normal) < 0.0;
+        if let front_face = true {
+            self.normal = outward_normal.clone();
+        } else {
+            self.normal = outward_normal.mul(-1.0);
+        }
+    }
+}
+
+impl Hittable for Sphere {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool {
+        // Calculate the discriminant
+        let oc = ray.origin.clone() - self.centre.clone();
+        let a = ray.direction.length_sq();
+        let half_b = oc.dot(&ray.direction); // we removed the '2' as we can consider the case b = 2h
+        let c = oc.length_sq() - (self.radius * self.radius);
+        let discriminant = half_b * half_b - a * c;
+
+        if discriminant < 0.0 {
+            return false
+        }
+        let sqrt_d = discriminant.sqrt();
+
+        // Find the nearest root that lies in the acceptable range.
+        let mut root = (-half_b - sqrt_d) / a;
+        if root < t_min || t_max < root {
+            root = (-half_b + sqrt_d) / a;
+            if root < t_min || t_max < root {
+                return false;
+            }
+        }
+
+        rec.t = root;
+        rec.point = ray.at(rec.t);
+        rec.normal = (rec.point.clone() - self.centre.clone()).div(self.radius);
+        let outward_normal = (rec.point.clone() - self.centre.clone()).div(self.radius);
+        rec.set_face_normal(ray, &outward_normal);
+
+        return true;
+    }
+}
+
+impl HittableList {
+    pub fn new() -> HittableList {
+        HittableList {
+            object_list: vec![],
+        }
+    }
+
+    pub fn clear(&mut self) -> () {
+        self.object_list.clear()
+    }
+
+    pub fn add(&mut self, object: Box<dyn Hittable>) -> () {
+        self.object_list.push(object)
+    }
+}
+
+impl Hittable for HittableList {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool {
+
+        let mut temp_record = HitRecord {
+            point: Default::default(),
+            normal: Default::default(),
+            t: 0.0,
+            front_face: false
+        };
+
+        let mut hit_anything = false;
+        let mut closest_current = t_max;
+
+        for i in self.object_list {
+            if i.hit(ray, t_min, closest_current, &mut temp_record) {
+                hit_anything = true;
+                closest_current = temp_record.clone().t;
+                rec = temp_record;
+            }
+        }
+
+        hit_anything
     }
 }
 
