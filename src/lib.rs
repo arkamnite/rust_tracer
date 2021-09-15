@@ -27,7 +27,7 @@ pub struct HittableList {
     pub object_list: Vec<Box<dyn Hittable>>, // Using a Box as we don't want to be copying around many objects.
 }
 
-trait Hittable {
+pub trait Hittable {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool;
 }
 
@@ -138,10 +138,11 @@ impl Sphere {
 impl HitRecord {
     pub fn set_face_normal(&mut self, ray: &Ray, outward_normal: &Vec3) {
         let front_face = ray.direction.dot(outward_normal) < 0.0;
-        if let front_face = true {
-            self.normal = outward_normal.clone();
+
+        self.normal = if front_face {
+            outward_normal.clone()
         } else {
-            self.normal = outward_normal.mul(-1.0);
+            outward_normal.mul(-1.0)
         }
     }
 }
@@ -208,14 +209,19 @@ impl Hittable for HittableList {
         let mut hit_anything = false;
         let mut closest_current = t_max;
 
-        for i in self.object_list {
+        // Iterate over each object in the list of Hittable.
+        for i in &self.object_list {
             if i.hit(ray, t_min, closest_current, &mut temp_record) {
                 hit_anything = true;
                 closest_current = temp_record.clone().t;
-                rec = temp_record;
+
+                // Find a better way to do this- basically changing rec to the values in temp_record.
+                rec.point = temp_record.point.clone();
+                rec.normal = temp_record.normal.clone();
+                rec.t = temp_record.t.clone();
+                rec.front_face = temp_record.front_face.clone();
             }
         }
-
         hit_anything
     }
 }
@@ -242,6 +248,17 @@ impl Default for Ray {
         Ray {
             origin: Default::default(),
             direction: Default::default(),
+        }
+    }
+}
+
+impl Clone for HitRecord {
+    fn clone(&self) -> HitRecord {
+        HitRecord {
+            point: self.point.clone(),
+            normal: self.normal.clone(),
+            t: self.t,
+            front_face: self.front_face
         }
     }
 }

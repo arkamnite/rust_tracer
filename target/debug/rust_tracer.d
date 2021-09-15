@@ -1,1 +1,1 @@
-C:\Users\bulge\source\repos\rust_tracer\target\debug\rust_tracer.exe: C:\Users\bulge\source\repos\rust_tracer\src\lib.rs C:\Users\bulge\source\repos\rust_tracer\src\main.rs
+/home/akram/Source/rust/rust_tracer/target/debug/rust_tracer: /home/akram/Source/rust/rust_tracer/src/lib.rs /home/akram/Source/rust/rust_tracer/src/main.rs

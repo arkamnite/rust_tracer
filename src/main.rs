@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::prelude::*;
 use rust_tracer::*;
-use num::Float;
 
 fn main() {
     println!("Hello, world!");
@@ -12,7 +11,7 @@ fn write_pixels() {
 
     // Image
     let aspect_ratio = 16.0 / 9.0;
-    let img_width: f64 = 600.0;
+    let img_width: f64 = 800.0;
     let img_height: f64 = img_width / aspect_ratio;
 
     // Camera
@@ -43,11 +42,11 @@ fn write_pixels() {
                 direction: lower_left_corner.clone() + horizontal.mul(u) + vertical.mul(v) - origin.clone()
             };
 
-            let colour = Vec3 {
-                x: i as f64 / (img_height - 1.0),
-                y: j as f64 / (img_width - 1.0),
-                z: 0.5,
-            };
+            // let colour = Vec3 {
+            //     x: i as f64 / (img_height - 1.0),
+            //     y: j as f64 / (img_width - 1.0),
+            //     z: 0.5,
+            // };
 
             image_string.push_str(write_colour(ray_to_colour(&ray)).as_str());
             // image_string.push_str(write_colour(colour).as_str())
@@ -65,7 +64,7 @@ fn write_pixels() {
 }
 
 fn write_colour(col: Vec3) -> String {
-    format!("{} {} {}\n", (col.x * 255.0) as f32, (col.y * 255.0) as f32, (col.z * 255.0) as f32)
+    format!("{} {} {}\n", (col.x * 255.0) as i32, (col.y * 255.0) as i32, (col.z * 255.0) as i32)
 }
 
 fn write_file(str: &str, file: &mut File) {
@@ -81,8 +80,8 @@ fn ray_to_colour(ray: &Ray) -> Vec3 {
 
     // Only colour normals that are in front of the camera
     if t > 0.0 {
-        let N = find_unit_vector(&(ray.at(t) - Vec3 { x: 0.0, y: 0.0, z: -1.0 }));
-        return Vec3{x: N.x + 1.0, y: N.y + 1.0, z: N.z + 1.0}.mul(0.5)
+        let n = find_unit_vector(&(ray.at(t) - Vec3 { x: 0.0, y: 0.0, z: -1.0 }));
+        return Vec3{x: n.x + 1.0, y: n.y + 1.0, z: n.z + 1.0}.mul(0.5)
     }
 
     let unit_direction = ray.direction.unit_vector(); // Get the unit vector of the ray
@@ -90,12 +89,12 @@ fn ray_to_colour(ray: &Ray) -> Vec3 {
     let mag = 0.5 * (unit_direction.y + 1.0); // The 1.0 is the focal length here. As we go upwards, the colour decreases.
     let colour_vec = Vec3 {x: 1.0, y: 1.0, z: 1.0};
     let grad_vec = Vec3 { x: 0.5, y: 0.7, z: 1.0 };
-    colour_vec.mul((1.0 - mag)) + grad_vec.mul(mag) // Compute the magic gradient colour.
+    colour_vec.mul(1.0 - mag) + grad_vec.mul(mag) // Compute the magic gradient colour.
 }
 
-fn lerp_float(begin: f64, end: f64, t: f64) -> f64 {
-    ((1.0 - t) * begin) + (t * end)
-}
+// fn lerp_float(begin: f64, end: f64, t: f64) -> f64 {
+//     ((1.0 - t) * begin) + (t * end)
+// }
 
 // Calculates the discriminant
 fn hit_sphere(centre: &Vec3, radius: f64, ray: &Ray) -> f64 {
