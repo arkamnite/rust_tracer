@@ -1,8 +1,9 @@
 mod math;
-mod objects;
 
 use std::ops::*;
 use std::rc::Rc; // Use this to allow multiple geometry to share the same instance.
+
+pub use crate::math::degrees_to_radians;
 
 pub struct Vec3 {
     pub x: f64,
@@ -252,6 +253,25 @@ impl Default for Ray {
         Ray {
             origin: Default::default(),
             direction: Default::default(),
+        }
+    }
+}
+
+impl Default for HitRecord {
+    fn default() -> HitRecord {
+        HitRecord {
+            point: Default::default(),
+            normal: Default::default(),
+            t: 0.0,
+            front_face: false
+        }
+    }
+}
+
+impl Default for HittableList {
+    fn default() -> HittableList {
+        HittableList {
+            object_list: vec![]
         }
     }
 }

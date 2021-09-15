@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::prelude::*;
 use rust_tracer::*;
-
+use std::rc::Rc;
 
 fn main() {
     println!("Hello, world!");
@@ -14,6 +14,17 @@ fn write_pixels() {
     let aspect_ratio = 16.0 / 9.0;
     let img_width: f64 = 800.0;
     let img_height: f64 = img_width / aspect_ratio;
+
+    // World
+    let mut world: HittableList = Default::default();
+    world.add(Rc::new(Sphere {
+        centre: Vec3 { x: 0.0, y: -105.0, z: -1.0 },
+        radius: 100.0,
+    }));
+    world.add(Rc::new(Sphere {
+            centre: Vec3 { x: 0.0, y: 0.0, z: -1.0 },
+            radius: 0.5,
+        }));
 
     // Camera
     let viewport_height = 2.0;
@@ -43,18 +54,14 @@ fn write_pixels() {
                 direction: lower_left_corner.clone() + horizontal.mul(u) + vertical.mul(v) - origin.clone()
             };
 
-            // let colour = Vec3 {
-            //     x: i as f64 / (img_height - 1.0),
-            //     y: j as f64 / (img_width - 1.0),
-            //     z: 0.5,
-            // };
+            let colour = ray_to_colour(&ray, &world);
 
-            image_string.push_str(write_colour(ray_to_colour(&ray)).as_str());
+            image_string.push_str(write_colour(ray_to_colour(&ray, &world)).as_str());
             // image_string.push_str(write_colour(colour).as_str())
         }
     }
     print!("\n");
-    let path = "image.ppm";
+    let path = "newimg.ppm";
 
     let mut file = match File::create(&path) {
         Err(why) => panic!("couldn't create image file {}", why),
@@ -75,22 +82,33 @@ fn write_file(str: &str, file: &mut File) {
     }
 }
 
-fn ray_to_colour(ray: &Ray) -> Vec3 {
+fn ray_to_colour(ray: &Ray, world: &Hittable) -> Vec3 {
+    let mut rec: HitRecord = Default::default();
 
-    let t =  hit_sphere(&Vec3 {x: 0.0, y: 0.0, z: -1.0, }, 0.5, &ray); //  we created the centre
-
-    // Only colour normals that are in front of the camera
-    if t > 0.0 {
-        let n = find_unit_vector(&(ray.at(t) - Vec3 { x: 0.0, y: 0.0, z: -1.0 }));
-        return Vec3{x: n.x + 1.0, y: n.y + 1.0, z: n.z + 1.0}.mul(0.5)
+    if world.hit(ray, 0.0, f64::INFINITY, &mut rec) {
+        return (rec.normal + unit_vector(1.0)).mul(0.5);
     }
 
     let unit_direction = ray.direction.unit_vector(); // Get the unit vector of the ray
-    // <- MAGIC NUMBER ALERT
-    let mag = 0.5 * (unit_direction.y + 1.0); // The 1.0 is the focal length here. As we go upwards, the colour decreases.
-    let colour_vec = Vec3 {x: 1.0, y: 1.0, z: 1.0};
-    let grad_vec = Vec3 { x: 0.5, y: 0.7, z: 1.0 };
-    colour_vec.mul(1.0 - mag) + grad_vec.mul(mag) // Compute the magic gradient colour.
+
+    let t = (unit_direction.y + 1.0) * 0.5;
+
+    return unit_vector(1.0).mul(1.0-t) + Vec3{x: 0.5, y: 0.7, z: 1.0,}.mul(t)
+
+    // let t =  hit_sphere(&Vec3 {x: 0.0, y: 0.0, z: -1.0, }, 0.5, &ray); //  we created the centre
+    //
+    // // Only colour normals that are in front of the camera
+    // if t > 0.0 {
+    //     let n = find_unit_vector(&(ray.at(t) - Vec3 { x: 0.0, y: 0.0, z: -1.0 }));
+    //     return Vec3{x: n.x + 1.0, y: n.y + 1.0, z: n.z + 1.0}.mul(0.5)
+    // }
+    //
+    // let unit_direction = ray.direction.unit_vector(); // Get the unit vector of the ray
+    // // <- MAGIC NUMBER ALERT
+    // let mag = 0.5 * (unit_direction.y + 1.0); // The 1.0 is the focal length here. As we go upwards, the colour decreases.
+    // let colour_vec = Vec3 {x: 1.0, y: 1.0, z: 1.0};
+    // let grad_vec = Vec3 { x: 0.5, y: 0.7, z: 1.0 };
+    // colour_vec.mul(1.0 - mag) + grad_vec.mul(mag) // Compute the magic gradient colour.
 }
 
 // fn lerp_float(begin: f64, end: f64, t: f64) -> f64 {
