@@ -1,4 +1,8 @@
+mod math;
+mod objects;
+
 use std::ops::*;
+use std::rc::Rc; // Use this to allow multiple geometry to share the same instance.
 
 pub struct Vec3 {
     pub x: f64,
@@ -24,7 +28,7 @@ pub struct Sphere {
 }
 
 pub struct HittableList {
-    pub object_list: Vec<Box<dyn Hittable>>, // Using a Box as we don't want to be copying around many objects.
+    pub object_list: Vec<Rc<dyn Hittable>>, // Using a Box as we don't want to be copying around many objects.
 }
 
 pub trait Hittable {
@@ -191,7 +195,7 @@ impl HittableList {
         self.object_list.clear()
     }
 
-    pub fn add(&mut self, object: Box<dyn Hittable>) -> () {
+    pub fn add(&mut self, object: Rc<dyn Hittable>) -> () {
         self.object_list.push(object)
     }
 }

@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use rust_tracer::*;
 
+
 fn main() {
     println!("Hello, world!");
     write_pixels();
