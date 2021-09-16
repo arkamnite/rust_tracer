@@ -3,13 +3,63 @@ use std::io::prelude::*;
 use rust_tracer::*;
 use std::rc::Rc;
 
-fn main() {
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
+use std::time::Duration;
+use sdl2::render::WindowCanvas;
+
+fn main() -> Result<(), String>{
     println!("Hello, world!");
+
+    let sdl_context = sdl2::init()?;
+    let video_subsystem = sdl_context.video()?;
+
+    let window = video_subsystem
+        .window("SDL Window", 800, 600)
+        .position_centered()
+        .opengl()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+
+
+    let mut event_pump = sdl_context.event_pump()?;
+
+    let timer = sdl_context.timer()?;
+
+    'running: loop {
+
+        let ticks = timer.ticks() as f64;
+
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. }
+                    | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'running,
+                _ => {}
+            }
+        }
+
+        canvas.set_draw_color(Color::RGB(((ticks.sin() + 1.0) * 127.5) as u8, 0, 0));
+        canvas.clear();
+        canvas.present();
+        std::thread::sleep(Duration::from_millis(50));
+    }
+
     write_pixels();
+
+    Ok(())
 }
 
-const focal_length: f64 = 1.0;
+fn blit_texture(canvas: &WindowCanvas) -> Result<(), String> {
 
+
+    Ok(())
+}
 
 fn write_pixels() {
 
@@ -28,6 +78,10 @@ fn write_pixels() {
             centre: Vec3 { x: 0.0, y: 0.0, z: -1.0 },
             radius: 0.5,
         }));
+    world.add(Rc::new(Sphere {
+        centre: Vec3 { x: 1.0, y: 1.0, z: -1.5 },
+        radius: 0.25,
+    }));
 
     // Camera
     let viewport_height = 2.0;
@@ -85,7 +139,7 @@ fn write_file(str: &str, file: &mut File) {
     }
 }
 
-fn ray_to_colour(ray: &Ray, world: &Hittable) -> Vec3 {
+fn ray_to_colour(ray: &Ray, world: &dyn Hittable) -> Vec3 {
     let mut rec: HitRecord = Default::default();
 
     if world.hit(ray, 0.0, f64::INFINITY, &mut rec) {
@@ -97,38 +151,4 @@ fn ray_to_colour(ray: &Ray, world: &Hittable) -> Vec3 {
     let t = (unit_direction.y + 1.0) * 0.5;
 
     return unit_vector(1.0).mul(1.0-t) + Vec3{x: 0.5, y: 0.7, z: 1.0,}.mul(t)
-
-    // let t =  hit_sphere(&Vec3 {x: 0.0, y: 0.0, z: -1.0, }, 0.5, &ray); //  we created the centre
-    //
-    // // Only colour normals that are in front of the camera
-    // if t > 0.0 {
-    //     let n = find_unit_vector(&(ray.at(t) - Vec3 { x: 0.0, y: 0.0, z: -1.0 }));
-    //     return Vec3{x: n.x + 1.0, y: n.y + 1.0, z: n.z + 1.0}.mul(0.5)
-    // }
-    //
-    // let unit_direction = ray.direction.unit_vector(); // Get the unit vector of the ray
-    // // <- MAGIC NUMBER ALERT
-    // let mag = 0.5 * (unit_direction.y + 1.0); // The 1.0 is the focal length here. As we go upwards, the colour decreases.
-    // let colour_vec = Vec3 {x: 1.0, y: 1.0, z: 1.0};
-    // let grad_vec = Vec3 { x: 0.5, y: 0.7, z: 1.0 };
-    // colour_vec.mul(1.0 - mag) + grad_vec.mul(mag) // Compute the magic gradient colour.
-}
-
-// fn lerp_float(begin: f64, end: f64, t: f64) -> f64 {
-//     ((1.0 - t) * begin) + (t * end)
-// }
-
-// Calculates the discriminant
-fn hit_sphere(centre: &Vec3, radius: f64, ray: &Ray) -> f64 {
-    let oc = ray.origin.clone() - centre.clone();
-    let a = ray.direction.length_sq();
-    let half_b = oc.dot(&ray.direction); // we removed the '2' as we can consider the case b = 2h
-    let c = oc.length_sq() - (radius * radius);
-    let discriminant = half_b * half_b - a * c;
-
-    if discriminant < 0.0 {
-        -1.0
-    } else {
-        (-half_b - discriminant.sqrt()) / a
-    }
 }
