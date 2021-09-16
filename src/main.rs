@@ -8,11 +8,14 @@ fn main() {
     write_pixels();
 }
 
+const focal_length: f64 = 1.0;
+
+
 fn write_pixels() {
 
     // Image
     let aspect_ratio = 16.0 / 9.0;
-    let img_width: f64 = 800.0;
+    let img_width: f64 = 1200.0;
     let img_height: f64 = img_width / aspect_ratio;
 
     // World

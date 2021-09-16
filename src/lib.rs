@@ -1,4 +1,5 @@
 mod math;
+mod objects;
 
 use std::ops::*;
 use std::rc::Rc; // Use this to allow multiple geometry to share the same instance.
