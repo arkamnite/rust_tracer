@@ -9,3 +9,8 @@ edition = "2018"
 num = "0.4"
 sdl2 = "0.34"
 fastrand = "1.5.0"
+
+#[dependencies.sdl2]
+#version = "0.34"
+#default-features = false
+#features = ["gfx"]
