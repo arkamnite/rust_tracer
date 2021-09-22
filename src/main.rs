@@ -12,6 +12,9 @@ use sdl2::video::Window;
 use std::task::Context;
 use sdl2::rect::Point;
 use std::mem::size_of;
+use std::thread::sleep;
+use std::{thread, time};
+
 // use sdl2::gfx::primitives::DrawRenderer;
 
 fn main() -> Result<(), String>{
@@ -19,8 +22,11 @@ fn main() -> Result<(), String>{
 
     let sdl_context = sdl2::init()?;
     // let video_subsystem = sdl_context.video()?;
-    let w = 720;
+    let w = 1200;
     let res = (w, w / (16 / 9));
+
+    let mut offset = 1.0;
+    let arr = paint_pixels(res.1, offset);
 
     let window = init_window(&sdl_context, res.0, 16.0 / 9.0)?;
 
@@ -30,17 +36,13 @@ fn main() -> Result<(), String>{
 
     let timer = sdl_context.timer()?;
 
-    let arr = paint_pixels(res.1);
-
     let texture_creator = canvas.texture_creator();
     let mut texture = texture_creator
         .create_texture_streaming(None, res.0, res.0 * 9 / 16)
         .map_err(|e| e.to_string())?;
 
-    println!("Size of array: {}", arr.len());
     texture.update(None, arr.as_slice(), (res.1 * 4 * (size_of::<u8>() as u32)) as usize);
     canvas.copy(&texture, None, None);
-    canvas.present();
 
     'running: loop {
 
@@ -52,37 +54,14 @@ fn main() -> Result<(), String>{
                     ..
                 } => break 'running,
                 _ => {
-                    // eprintln!("Event pump is pumping: {:?}", event)
+                    // eprintln!("Event pump is pumping: {:?}", event);
+                    canvas.present();
                 }
             }
+
         }
 
-        // canvas.set_draw_color(Color::RGB(fastrand::u8(0..255), fastrand::u8(0..255), fastrand::u8(0..255)));
-        // for x in 1..900 {
-        //     let point = Point::new(fastrand::i32(0..x), fastrand::i32(0..x));
-        //     canvas.draw_point(point)?;
-        //     canvas.present();
-        // }
-        // canvas.set_draw_color(Color::RGB(0, 0, 0));
-        // canvas.clear();
-        // for x in 0..800 {
-        //     for y in 0..600 {
-        //         // canvas.clear();
-        //         // println!("{} {}", x, y);
-        //         point.x = y;
-        //         point.y = x;
-        //         // canvas.draw_point(point)?;
-        //         canvas.present();
-        //     }
-        // }
-
-        std::thread::sleep(Duration::from_millis(50));
-        // canvas.set_draw_color(Color::RGB(((ticks.sin() + 1.0) * 127.5) as u8, 0, 0));
-
-        // Fix this by creating a texture and blitting it in one go.
-        // Create the texture pixel by pixel.
-
-        // paint_pixels(&mut canvas);
+        // offset += (timer.ticks() as f64).sin() * 0.5;
     }
 
     // write_pixels();
@@ -103,13 +82,14 @@ fn init_window(context: &sdl2::Sdl, width: u32, aspect_ratio: f64) -> Result<Win
     window.map_err(|e| e.to_string())
 }
 
-fn paint_pixels(width: u32) -> Vec<u8> {
+fn paint_pixels(width: u32, offset: f64) -> Vec<u8> {
     // Use canvas.drawPoint
     // let (width, height) = canvas.drawable_size();
 
     let aspect_ratio = 16.0 / 9.0;
     let img_width: f64 = width as f64;
     let img_height: f64 = img_width / aspect_ratio;
+    let samples_per_pixel = 50;
 
     // World
     let mut world: HittableList = Default::default();
@@ -118,63 +98,55 @@ fn paint_pixels(width: u32) -> Vec<u8> {
         radius: 100.0,
     }));
     world.add(Rc::new(Sphere {
-        centre: Vec3 { x: 0.0, y: 0.0, z: -1.0 },
+        centre: Vec3 { x: 0.0, y: 0.0, z: -1.0},
         radius: 0.5,
     }));
     world.add(Rc::new(Sphere {
-        centre: Vec3 { x: 1.0, y: 1.0, z: -1.5 },
+        centre: Vec3 { x: 1.0, y: 1.0 * offset, z: -1.5 },
         radius: 0.25,
     }));
 
     // Camera
-    let viewport_height = 2.0;
-    let viewport_width = aspect_ratio * viewport_height;
-    let focal_length = 1.0; // <- MAGIC NUMBER ALERT.
+    let camera = Camera::new(width, 16.0 / 9.0, 2, 1.0, unit_vector(0.0));
 
-    let origin: Vec3 = Default::default(); // A zero vector.
-    let horizontal = Vec3 { x: viewport_width, y: 0.0, z: 0.0, };
-    let vertical = Vec3 { x: 0.0, y: viewport_height, z: 0.0, };
-    let lower_left_corner = origin.clone() - horizontal.div(2.0) - vertical.div(2.0) - Vec3 {x: 0.0, y: 0.0, z: focal_length, };
-
-    let mut pixel_vector: Vec<(Point, sdl2::pixels::Color)> = Vec::new();
     let mut color_vector: Vec<u8> = Vec::new();
 
-    for i in (0..=((img_height.round() as i64)-1)).rev() {
-        print!("\rScanlines remaining: {}", i);
-        for j in 0..=((img_width.round() as i64)-1) {
+    for i in (0..=((camera.height as i64)-1)).rev() {
+        // print!("\rScanlines remaining: {}\n", i);
+        for j in 0..=((camera.width as i64)-1) {
 
-            let u = j as f64 / (img_width - 1.0); // Scan across left to right of the viewport
-            let v = i as f64 / (img_height - 1.0); // Scan from bottom to top of the viewport
+            // let mut pixel = ray_to_pixel(&ray, &world);
+            let mut r_temp = 0.0;
+            let mut g_temp = 0.0;
+            let mut b_temp = 0.0;
 
-            let ray = Ray {
-                origin: origin.clone(),
-                direction: lower_left_corner.clone() + horizontal.mul(u) + vertical.mul(v) - origin.clone()
-            };
+            for k in 0..samples_per_pixel {
 
-            let colour = ray_to_colour(&ray, &world);
-            let pixel = ray_to_pixel(&ray, &world);
+                let u = (j as f64 + fastrand::f64()) / (img_width - 1.0); // Scan across left to right of the viewport
+                let v = (i as f64 + fastrand::f64()) / (img_height - 1.0); // Scan from bottom to top of the viewport
+                let ray = camera.get_ray(u, v);
 
-            let point = Point::new(i as i32, j as i32);
-            pixel_vector.push((point, ray_to_pixel(&ray, &world)));
-            color_vector.push(pixel.a);
+                let progress = (j / camera.width as i64) / camera.height as i64 * 100;
+
+                let col = ray_to_pixel(&ray, &world);
+                r_temp += col.r as f64;
+                g_temp += col.g as f64;
+                b_temp += col.b as f64;
+
+                print!("\rScanlines remaining: {} Sample: {}", i, k);
+            }
+
+            let pixel = sample_colour((r_temp, g_temp, b_temp), samples_per_pixel);
+
+            color_vector.push(255);
             color_vector.push(pixel.r);
             color_vector.push(pixel.g);
             color_vector.push(pixel.b);
-            // canvas.set_draw_color(ray_to_pixel(&ray, &world));
-            // canvas.draw_point(point);
-            // canvas.present();
+            // println!("({} {} {})   ", pixel.r, pixel.g, pixel.b);
         }
     }
 
     color_vector
-
-    // let texture_creator = canvas.texture_creator();
-    // let mut texture = texture_creator
-    //     .create_texture_streaming(None, 800, 600)
-    //     .map_err(|e| e.to_string())?;
-    //
-    // texture.update(None, color_vector.as_slice(), 600 * 1);
-    // Ok(texture)
 }
 
 fn write_pixels() {

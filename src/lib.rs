@@ -5,6 +5,8 @@ use std::ops::*;
 use std::rc::Rc; // Use this to allow multiple geometry to share the same instance.
 
 pub use crate::math::degrees_to_radians;
+pub use crate::objects::Camera;
+use sdl2::pixels::Color;
 
 pub struct Vec3 {
     pub x: f64,
@@ -299,4 +301,31 @@ pub fn unit_vector(t: f64) -> Vec3 {
 pub fn find_unit_vector(v: &Vec3) -> Vec3 {
     let mag = v.length();
     v.div(mag)
+}
+
+pub fn clamp(x: f64, min: f64, max: f64) -> f64 {
+    if x < min {
+        return min;
+    } else if x > max {
+        return max;
+    }
+    x
+}
+
+pub fn sample_colour(col: (f64, f64, f64), samples: u32) -> sdl2::pixels::Color {
+    let mut r = col.0;
+    let mut g = col.1;
+    let mut b = col.2;
+
+    // Divide the colour by the number of samples.
+    let scale = 1.0 / samples as f64;
+    r *= scale;
+    g *= scale;
+    b *= scale;
+
+    // Return the clamped colour.
+    Color::RGBA((clamp(r, 0.0, 255.0)) as u8,
+                (clamp(g, 0.0, 255.0)) as u8,
+                (clamp(b, 0.0, 255.0)) as u8,
+                255)
 }
