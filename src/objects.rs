@@ -58,17 +58,3 @@ impl Camera {
         }
     }
 }
-
-// impl Default for Camera {
-//     fn default() -> Self {
-//         Camera {
-//             width: 800.0,
-//             height: 450.0,
-//             aspect_ratio: 16.0 / 9.0,
-//             viewport_width: 16.0 / 9.0 * 2.0,
-//             viewport_height: 0.0,
-//             focal_length: 0.0,
-//             position: Default::default()
-//         }
-//     }
-// }

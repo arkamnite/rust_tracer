@@ -3,6 +3,7 @@ mod objects;
 
 use std::ops::*;
 use std::rc::Rc; // Use this to allow multiple geometry to share the same instance.
+use std::convert::From;
 
 pub use crate::math::degrees_to_radians;
 pub use crate::objects::Camera;
@@ -94,6 +95,37 @@ impl Vec3 {
 
     pub fn unit_vector(&self) -> Vec3 {
         self.div(self.length())
+    }
+
+}
+
+impl From<i32> for Vec3 {
+    fn from(v: i32) -> Self {
+        Vec3 {
+            x: v as f64,
+            y: v as f64,
+            z: v as f64,
+        }
+    }
+}
+
+impl From<f64> for Vec3 {
+    fn from(v: f64) -> Self {
+        Vec3 {
+            x: v,
+            y: v,
+            z: v,
+        }
+    }
+}
+
+impl From<(f64, f64, f64)> for Vec3 {
+    fn from(v: (f64, f64, f64)) -> Self {
+        Vec3 {
+            x: v.0,
+            y: v.1,
+            z: v.2,
+        }
     }
 }
 

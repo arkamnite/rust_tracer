@@ -94,15 +94,15 @@ fn paint_pixels(width: u32, offset: f64) -> Vec<u8> {
     // World
     let mut world: HittableList = Default::default();
     world.add(Rc::new(Sphere {
-        centre: Vec3 { x: 0.0, y: -105.0, z: -1.0 },
+        centre: Vec3::from((0.0, -105.5, -1.0)),
         radius: 100.0,
     }));
     world.add(Rc::new(Sphere {
-        centre: Vec3 { x: 0.0, y: 0.0, z: -1.0},
+        centre: Vec3::from((0.0, 0.0, -1.0)),
         radius: 0.5,
     }));
     world.add(Rc::new(Sphere {
-        centre: Vec3 { x: 1.0, y: 1.0 * offset, z: -1.5 },
+        centre: Vec3::from((1.0, 1.0 * offset, -1.5)),
         radius: 0.25,
     }));
 
