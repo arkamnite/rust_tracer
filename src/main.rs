@@ -22,7 +22,7 @@ fn main() -> Result<(), String>{
 
     let sdl_context = sdl2::init()?;
     // let video_subsystem = sdl_context.video()?;
-    let w = 1200;
+    let w = 800;
     let res = (w, w / (16 / 9));
 
     let mut offset = 1.0;
@@ -45,7 +45,6 @@ fn main() -> Result<(), String>{
     canvas.copy(&texture, None, None);
 
     'running: loop {
-
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
@@ -82,6 +81,7 @@ fn init_window(context: &sdl2::Sdl, width: u32, aspect_ratio: f64) -> Result<Win
     window.map_err(|e| e.to_string())
 }
 
+/// Used to paint the scene to an array of pixel components.
 fn paint_pixels(width: u32, offset: f64) -> Vec<u8> {
     // Use canvas.drawPoint
     // let (width, height) = canvas.drawable_size();
@@ -90,6 +90,8 @@ fn paint_pixels(width: u32, offset: f64) -> Vec<u8> {
     let img_width: f64 = width as f64;
     let img_height: f64 = img_width / aspect_ratio;
     let samples_per_pixel = 50;
+
+    let max_depth = 50;
 
     // World
     let mut world: HittableList = Default::default();
@@ -101,10 +103,10 @@ fn paint_pixels(width: u32, offset: f64) -> Vec<u8> {
         centre: Vec3::from((0.0, 0.0, -1.0)),
         radius: 0.5,
     }));
-    world.add(Rc::new(Sphere {
-        centre: Vec3::from((1.0, 1.0 * offset, -1.5)),
-        radius: 0.25,
-    }));
+    // world.add(Rc::new(Sphere {
+    //     centre: Vec3::from((1.0, 1.0 * offset, -1.5)),
+    //     radius: 0.25,
+    // }));
 
     // Camera
     let camera = Camera::new(width, 16.0 / 9.0, 2, 1.0, unit_vector(0.0));
@@ -112,7 +114,7 @@ fn paint_pixels(width: u32, offset: f64) -> Vec<u8> {
     let mut color_vector: Vec<u8> = Vec::new();
 
     for i in (0..=((camera.height as i64)-1)).rev() {
-        // print!("\rScanlines remaining: {}\n", i);
+        // print!("\rScan-lines remaining: {}\n", i);
         for j in 0..=((camera.width as i64)-1) {
 
             // let mut pixel = ray_to_pixel(&ray, &world);
@@ -128,12 +130,12 @@ fn paint_pixels(width: u32, offset: f64) -> Vec<u8> {
 
                 let progress = (j / camera.width as i64) / camera.height as i64 * 100;
 
-                let col = ray_to_pixel(&ray, &world);
+                let col = ray_to_pixel(&ray, &world, max_depth);
                 r_temp += col.r as f64;
                 g_temp += col.g as f64;
                 b_temp += col.b as f64;
 
-                print!("\rScanlines remaining: {} Sample: {}", i, k);
+                print!("\rScan-lines remaining: {} Sample: {}", i, k);
             }
 
             let pixel = sample_colour((r_temp, g_temp, b_temp), samples_per_pixel);
@@ -149,6 +151,7 @@ fn paint_pixels(width: u32, offset: f64) -> Vec<u8> {
     color_vector
 }
 
+/// Used to write a PPM image.
 fn write_pixels() {
 
     // Image
@@ -188,7 +191,7 @@ fn write_pixels() {
     image_string.push_str(format!("P3\n{} {}\n255\n", img_width, img_height).as_str());
 
     for i in (0..=((img_height.round() as i64)-1)).rev() {
-        print!("\rScanlines remaining: {}", i);
+        print!("\rScan-lines remaining: {}", i);
         for j in 0..=((img_width.round() as i64)-1) {
 
             let u = j as f64 / (img_width - 1.0); // Scan across left to right of the viewport
@@ -206,7 +209,7 @@ fn write_pixels() {
         }
     }
     print!("\n");
-    let path = "newimg.ppm";
+    let path = "new-img.ppm";
 
     let mut file = match File::create(&path) {
         Err(why) => panic!("couldn't create image file {}", why),
@@ -216,10 +219,12 @@ fn write_pixels() {
     write_file(image_string.as_str(), &mut file);
 }
 
+/// Used to convert a Vector3 into a string.
 fn write_colour(col: Vec3) -> String {
     format!("{} {} {}\n", (col.x * 255.0) as i32, (col.y * 255.0) as i32, (col.z * 255.0) as i32)
 }
 
+/// Creates a PPM file given an input string.
 fn write_file(str: &str, file: &mut File) {
     match file.write_all(str.as_bytes()) {
         Err(e) => panic!("Couldn't write to image: {}", e),
@@ -227,6 +232,7 @@ fn write_file(str: &str, file: &mut File) {
     }
 }
 
+/// Converts a ray to a Vec3 representing a single colour, given a world object too.
 fn ray_to_colour(ray: &Ray, world: &dyn Hittable) -> Vec3 {
     let mut rec: HitRecord = Default::default();
 
@@ -241,11 +247,26 @@ fn ray_to_colour(ray: &Ray, world: &dyn Hittable) -> Vec3 {
     return unit_vector(1.0).mul(1.0-t) + Vec3{x: 0.5, y: 0.7, z: 1.0,}.mul(t)
 }
 
-fn ray_to_pixel(ray: &Ray, world: &dyn Hittable) -> sdl2::pixels::Color {
+/// Traces a ray in a scene to an SDL pixel.
+fn ray_to_pixel(ray: &Ray, world: &dyn Hittable, depth: u32) -> sdl2::pixels::Color {
     let mut rec: HitRecord = Default::default();
 
+    if depth <= 0 {
+        return Color::RGBA(0, 0, 0, 255);
+    }
+
+    print!("\rCurrently on depth pass {}", depth);
     if world.hit(ray, 0.0, f64::INFINITY, &mut rec) {
         // return (rec.normal + unit_vector(1.0)).mul(0.5);
+        let target = rec.point.clone() + rec.normal.clone() + Vec3::random_in_unit_sphere();
+        let temp_ray = Ray { origin: rec.point.clone(), direction: target - rec.point };
+        let cache_col = ray_to_pixel(&temp_ray, world, depth - 1);
+        return Color::RGBA(
+            (cache_col.r as f64 * 0.5) as u8,
+            (cache_col.g as f64 * 0.5) as u8,
+            (cache_col.b as f64 * 0.5) as u8,
+            cache_col.a,
+        );
         return vec_to_col(&(rec.normal + unit_vector(1.0)).mul(0.5));
     }
 

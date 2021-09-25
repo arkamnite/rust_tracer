@@ -4,6 +4,7 @@ mod objects;
 use std::ops::*;
 use std::rc::Rc; // Use this to allow multiple geometry to share the same instance.
 use std::convert::From;
+use fastrand::*;
 
 pub use crate::math::degrees_to_radians;
 pub use crate::objects::Camera;
@@ -95,6 +96,29 @@ impl Vec3 {
 
     pub fn unit_vector(&self) -> Vec3 {
         self.div(self.length())
+    }
+
+    pub fn random_vector() -> Vec3 {
+        Vec3::from((fastrand::f64(), fastrand::f64(), fastrand::f64()))
+    }
+
+    pub fn i_random_vector(min: i32, max: i32) -> Vec3 {
+        Vec3::from(
+            (
+                fastrand::i32(min..max) as f64,
+                fastrand::i32(min..max) as f64,
+                fastrand::i32(min..max) as f64,
+            )
+        )
+    }
+
+    pub fn random_in_unit_sphere() -> Vec3 {
+        loop {
+            let p = Vec3::i_random_vector(-1, 1);
+            if p.length_sq() < 1.0 {
+                return p;
+            }
+        }
     }
 
 }
